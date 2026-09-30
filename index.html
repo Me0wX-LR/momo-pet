@@ -266,12 +266,12 @@ const STR = {
     hands: "剩低",
     startTitle: "十關摸到佢瞓",
     start: [
-      "按住毛毛，安眠條先會升。快嬲就縮手。",
+      "按住毛毛，安眠條先會升。突然鬆手會即刻抓你。見到縮手先放。",
       "一關過咗先去下一關。第 10 關得 Faker 嗰種反應先過到。",
       "抓完就當次完。可以留名，最多 10 個字。"
     ],
     startHint: "按住畫面，或者按住空白鍵。Esc 暫停。",
-    help: "按住先算摸。見到縮手就鬆開。太早鬆開，安眠會跌，越後跌得越快。",
+    help: "按住先算摸。摸緊突然鬆手會即刻抓。見到縮手先鬆開。",
     loading: "載入中",
     missingTitle: "畫面檔沒載入",
     missing: "請由呢個頁面旁邊的 art 資料夾打開。",
@@ -314,12 +314,12 @@ const STR = {
     hands: "Lives",
     startTitle: "Ten stages to sleep",
     start: [
-      "Hold on Momo. Let go when he is about to get angry.",
+      "Hold on Momo. A sudden release scratches at once. Let go only when he is about to get angry.",
       "Clear a stage to continue. Stage 10 is only for a Faker-level reaction.",
       "When your lives run out, the run ends. Leave a name, up to 10 characters."
     ],
     startHint: "Hold on the picture, or hold Space. Esc pauses.",
-    help: "Hold to pet. Let go on pull back. Letting go early drops the meter, faster on later stages.",
+    help: "Hold to pet. Letting go suddenly scratches at once. Let go only on pull back.",
     loading: "Loading",
     missingTitle: "Pictures missing",
     missing: "Open this page next to the art folder.",
@@ -362,12 +362,12 @@ const STR = {
     hands: "剩下",
     startTitle: "十关摸到他睡",
     start: [
-      "按住毛毛，安眠条才会上升。快生气就缩手。",
+      "按住毛毛，安眠条才会上升。突然松手会马上抓你。见到缩手再放。",
       "过了一关才去下一关。第 10 关只有 Faker 那种反应才过得去。",
       "抓完这一次就结束。可以留名，最多 10 个字。"
     ],
     startHint: "按住画面，或者按住空格。Esc 暂停。",
-    help: "按住才算摸。见到缩手就松开。太早松开，安眠会掉，越往后掉得越快。",
+    help: "按住才算摸。摸着的时候突然松手会马上抓。见到缩手再松开。",
     loading: "加载中",
     missingTitle: "画面没加载",
     missing: "请从这个页面旁边的 art 文件夹打开。",
@@ -430,6 +430,7 @@ let stageIndex = 0;
 let holding = false;
 let keyHold = false;
 let pointerDown = false;
+let swallowRelease = false;
 let paused = false;
 let sleep = 0;
 let hands = STAGES[0].lives;
@@ -638,10 +639,12 @@ function beginRun(now) {
   startedAt = now;
   lastNow = now;
   runMs = 0;
+  swallowRelease = true;
   resultEl.hidden = true;
   saveBtn.disabled = false;
   saveMsg.textContent = "";
   overlay.hidden = true;
+  releaseInputs();
   startStage(now);
 }
 function startStage(now) {
@@ -731,8 +734,19 @@ function continueStage(now) {
   releaseInputs();
   startStage(now);
 }
-function syncHold() {
+function syncHold(now) {
+  const prev = holding;
   holding = keyHold || pointerDown;
+  if (swallowRelease) {
+    if (!holding) swallowRelease = false;
+    if (phase === "calm" || phase === "intro") statusKey = holding ? "petting" : (phase === "intro" ? "intro" : "idle");
+    return;
+  }
+  if (prev && !holding && (phase === "calm" || phase === "intro")) {
+    scratch(now || performance.now());
+    paint(performance.now());
+    return;
+  }
   if (phase === "calm" || phase === "intro") statusKey = holding ? "petting" : (phase === "intro" ? "intro" : "idle");
 }
 function tick(now) {
@@ -800,6 +814,8 @@ function onPress(now) {
   ensureAudio();
   if (paused) {
     togglePause();
+    swallowRelease = true;
+    releaseInputs();
     return;
   }
   if (phase === "start") beginRun(now);
