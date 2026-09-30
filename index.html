@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>摸毛毛</title>
+<link rel="stylesheet" href="faker.css">
 <style>
   html, body {
     margin: 0;
@@ -123,7 +124,23 @@
     padding: 8px 12px;
     min-height: 40px;
   }
-  #pause-btn { margin-top: 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+  #pause-btn { margin-top: 0; }
+  a.back-portal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 14px;
+    background: #1c1c1c;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 8px;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
   .langs { display: flex; gap: 8px; margin-top: 16px; }
   .langs button[aria-pressed="true"] { border-color: #f4f4f4; }
   .result { margin-top: 16px; }
@@ -180,7 +197,7 @@
     .readout { min-width: 0; width: 100%; padding: 0 16px; box-sizing: border-box; }
     #sleep-num { font-size: 48px; }
     .help, #side-wrap { display: none; }
-    .langs button, #pause-btn, #next-btn, #retry-btn, #save-btn { min-height: 44px; }
+    .langs button, #pause-btn, a.back-portal, #next-btn, #retry-btn, #save-btn { min-height: 44px; }
   }
 </style>
 </head>
@@ -202,7 +219,10 @@
     <div class="status" id="status"></div>
     <div class="meta" id="meta"></div>
     <div class="help" id="help"></div>
-    <button type="button" id="pause-btn">暫停</button>
+    <div class="actions">
+      <button type="button" id="pause-btn">暫停</button>
+      <a class="back-portal" id="back-portal" href="/" target="_top">返主選單</a>
+    </div>
     <div class="result" id="result" hidden>
       <h2 id="result-title"></h2>
       <p id="result-body"></p>
@@ -218,6 +238,7 @@
       </div>
       <button type="button" id="next-btn" hidden>下一關</button>
       <button type="button" id="retry-btn" hidden>由第 1 關再嚟</button>
+      <a class="back-portal" id="back-portal-end" href="/" target="_top">返主選單</a>
     </div>
     <div id="side-wrap">
       <div class="board-title" id="side-board-title"></div>
@@ -229,6 +250,8 @@
       <button type="button" data-lang="zh-Hans">简体</button>
     </div>
   </div>
+<script src="faker-policy.js"></script>
+<script src="faker-ui.js"></script>
 <script>
 const SLEEP_MAX = 100;
 const ART = {
@@ -271,6 +294,13 @@ const STR = {
       "抓完就當次完。可以留名，最多 10 個字。"
     ],
     startHint: "按住畫面，或者按住空白鍵。Esc 暫停。",
+    fakerTitle: "Faker 上場",
+    fakerStart: [
+      "反應時間 106 到 120 毫秒。按住毛毛，見到縮手先放。",
+      "佢唔會按錯。縮手快過呢次反應，就會被抓。"
+    ],
+    fakerHint: "循環播 GODS ft. NewJeans · Worlds 2023。成績記成 Faker (AI)。",
+    liveStage: (n) => "第 " + n + " 關",
     help: "按住先算摸。摸緊突然鬆手會即刻抓。見到縮手先鬆開。",
     loading: "載入中",
     missingTitle: "畫面檔沒載入",
@@ -284,6 +314,7 @@ const STR = {
     intro: (n, name) => "第 " + n + " 關 · " + name,
     pausedTitle: "暫停",
     pauseBtn: "暫停",
+    back: "返主選單",
     paused: ["毛毛等緊你。"],
     pausedHint: "撳一下或者空白鍵繼續。",
     meta: (t, saves, hits) => "用時 " + t + " 秒 · 縮手 " + saves + " · 抓中 " + hits,
@@ -298,6 +329,7 @@ const STR = {
     board: "最高紀錄",
     empty: "還沒有紀錄。",
     boardDown: "排行榜讀不到。",
+    localTag: "未上傳",
     name: "名稱",
     save: "記入排行",
     needName: "先輸入名稱，最多 10 個字。",
@@ -319,6 +351,13 @@ const STR = {
       "When your lives run out, the run ends. Leave a name, up to 10 characters."
     ],
     startHint: "Hold on the picture, or hold Space. Esc pauses.",
+    fakerTitle: "Faker is in",
+    fakerStart: [
+      "Reaction 106–120 ms. Hold Momo, and let go only when the paw pulls back.",
+      "The button is always the right one. If the pull is shorter than his reaction, he gets scratched."
+    ],
+    fakerHint: "GODS ft. NewJeans · Worlds 2023, looped",
+    liveStage: (n) => "Stage " + n,
     help: "Hold to pet. Letting go suddenly scratches at once. Let go only on pull back.",
     loading: "Loading",
     missingTitle: "Pictures missing",
@@ -332,6 +371,7 @@ const STR = {
     intro: (n, name) => "Stage " + n + " · " + name,
     pausedTitle: "Paused",
     pauseBtn: "Pause",
+    back: "Back to menu",
     paused: ["Momo is waiting."],
     pausedHint: "Click or Space to continue.",
     meta: (t, saves, hits) => t + " s · pulled back " + saves + " · scratched " + hits,
@@ -346,6 +386,7 @@ const STR = {
     board: "High scores",
     empty: "No scores yet.",
     boardDown: "The board could not be read.",
+    localTag: "This device",
     name: "Name",
     save: "Save score",
     needName: "Enter a name, up to 10 characters.",
@@ -367,6 +408,13 @@ const STR = {
       "抓完这一次就结束。可以留名，最多 10 个字。"
     ],
     startHint: "按住画面，或者按住空格。Esc 暂停。",
+    fakerTitle: "Faker 上场",
+    fakerStart: [
+      "反应时间 106 到 120 毫秒。按住毛毛，见到缩手再放。",
+      "他不会按错。缩手比这次反应还快，就会被抓。"
+    ],
+    fakerHint: "循环播放 GODS ft. NewJeans · Worlds 2023。成绩记成 Faker (AI)。",
+    liveStage: (n) => "第 " + n + " 关",
     help: "按住才算摸。摸着的时候突然松手会马上抓。见到缩手再松开。",
     loading: "加载中",
     missingTitle: "画面没加载",
@@ -380,6 +428,7 @@ const STR = {
     intro: (n, name) => "第 " + n + " 关 · " + name,
     pausedTitle: "暂停",
     pauseBtn: "暂停",
+    back: "回主菜单",
     paused: ["毛毛在等你。"],
     pausedHint: "点一下或者空格键继续。",
     meta: (t, saves, hits) => "用时 " + t + " 秒 · 缩手 " + saves + " · 抓中 " + hits,
@@ -394,6 +443,7 @@ const STR = {
     board: "最高纪录",
     empty: "还没有纪录。",
     boardDown: "排行榜读不到。",
+    localTag: "未上传",
     name: "名称",
     save: "记入排行",
     needName: "先输入名称，最多 10 个字。",
@@ -448,12 +498,35 @@ let audioCtx = null;
 let lastList = [];
 let lastHighlight = "";
 let boardNote = "";
+let boardToken = 0;
+let fakerPosted = false;
+let fakerLiveRow = null;
+let fakerLiveAt = "";
+let fakerLivePosted = 0;
 
 function T() { return STR[lang] || STR["zh-Hant"]; }
 function spec() { return STAGES[stageIndex]; }
+function fakerOn() { return window.MomoFaker && MomoFaker.enabled; }
 function loadLang() {
+  const query = new URLSearchParams(location.search).get("lang");
   const saved = localStorage.getItem(LANG_KEY);
-  lang = STR[saved] ? saved : "zh-Hant";
+  lang = STR[query] ? query : (STR[saved] ? saved : "zh-Hant");
+}
+function fakerSetHold(down, now) {
+  pointerDown = !!down;
+  keyHold = false;
+  syncHold(now);
+  if (fakerOn()) MomoFaker.setHold(!!down);
+}
+function fakerPlanPress(phaseName, now) {
+  if (!fakerOn() || holding) return;
+  const decision = MomoFaker.decidePet(phaseName, false, now, null, FakerPolicy.focusFromElapsed(now - startedAt));
+  MomoFaker.note(decision);
+  if (decision.action !== "press") return;
+  MomoFaker.planAt(decision.at, (at) => {
+    if (phase !== "intro" && phase !== "calm" && phase !== "warn") return;
+    fakerSetHold(true, at);
+  });
 }
 function gapMs() {
   const s = spec();
@@ -539,6 +612,25 @@ function paint(now) {
   statusEl.textContent = map[statusKey] || "";
   metaEl.textContent = phase === "start" ? "" : t.meta((elapsed(now) / 1000).toFixed(1), saves, hits);
   showPose();
+  if (!fakerOn() || phase === "start" || phase === "win" || phase === "lose" || paused) return;
+  const ms = Math.round(elapsed(now));
+  const banked = phase === "clear" ? stageIndex + 1 : stageIndex;
+  fakerLiveRow = {
+    name: MomoFaker.NAME,
+    stage: banked,
+    label: t.rankStage(banked),
+    ms,
+    at: fakerLiveAt || new Date().toISOString(),
+    live: true
+  };
+  if (now - fakerLivePosted < 200) return;
+  fakerLivePosted = now;
+  renderBoards();
+  MomoFaker.tell({
+    type: "live",
+    game: "pet",
+    row: { name: MomoFaker.NAME, ms, stage: banked, label: t.rankStage(banked) }
+  });
 }
 function applyStatic() {
   const t = T();
@@ -548,6 +640,10 @@ function applyStatic() {
   document.getElementById("hand-label").textContent = t.hands;
   document.getElementById("help").textContent = t.help;
   document.getElementById("pause-btn").textContent = t.pauseBtn;
+  document.getElementById("back-portal").textContent = t.back;
+  document.getElementById("back-portal-end").textContent = t.back;
+  const home = location.hostname.endsWith("github.io") ? "https://me0wx-lr.github.io/momo-portal/" : "/";
+  document.querySelectorAll(".back-portal").forEach((link) => { link.href = home; });
   document.getElementById("name-label").textContent = t.name;
   document.getElementById("side-board-title").textContent = t.board;
   document.getElementById("end-board-title").textContent = t.board;
@@ -558,7 +654,10 @@ function applyStatic() {
   document.querySelectorAll("[data-lang]").forEach((btn) => {
     btn.setAttribute("aria-pressed", btn.dataset.lang === lang ? "true" : "false");
   });
-  if (phase === "start" && readyStarted) showOverlay(t.startTitle, t.start, t.startHint);
+  if (phase === "start" && readyStarted) {
+    if (fakerOn()) showOverlay(t.fakerTitle, t.fakerStart, t.fakerHint);
+    else showOverlay(t.startTitle, t.start, t.startHint);
+  }
   if (paused) showOverlay(t.pausedTitle, t.paused, t.pausedHint);
   if (phase === "clear") showOutcome("clear");
   if (phase === "win") showOutcome("win");
@@ -598,6 +697,7 @@ function setLang(next) {
   if (!STR[next]) return;
   lang = next;
   localStorage.setItem(LANG_KEY, lang);
+  if (fakerOn()) MomoFaker.syncLang(lang);
   applyStatic();
 }
 function ensureAudio() {
@@ -629,8 +729,16 @@ function releaseInputs() {
   holding = false;
   keyHold = false;
   pointerDown = false;
+  if (fakerOn()) MomoFaker.setHold(false);
 }
 function beginRun(now) {
+  if (fakerOn()) {
+    fakerPosted = false;
+    fakerLiveAt = new Date().toISOString();
+    fakerLivePosted = 0;
+    fakerLiveRow = null;
+    MomoFaker.clearPlan();
+  }
   stageIndex = 0;
   saves = 0;
   hits = 0;
@@ -658,6 +766,7 @@ function startStage(now) {
   overlay.hidden = true;
   resultEl.hidden = true;
   paint(now);
+  fakerPlanPress("intro", now);
 }
 function enterWarn(now) {
   phase = "warn";
@@ -665,6 +774,17 @@ function enterWarn(now) {
   phaseUntil = now + spec().warn;
   setBanner(T().warn, "warn");
   blip(520, 0.08, "triangle");
+  if (!fakerOn()) return;
+  const dangerStart = phaseUntil;
+  const dangerEnd = dangerStart + dangerMs();
+  const decision = MomoFaker.decidePetTell(now, dangerStart, dangerEnd, holding, FakerPolicy.focusFromElapsed(now - startedAt));
+  MomoFaker.note(decision);
+  MomoFaker.clearPlan();
+  if (decision.action !== "release") return;
+  MomoFaker.planAt(decision.at, (at) => {
+    if (phase !== "warn" && phase !== "danger") return;
+    fakerSetHold(false, at);
+  });
 }
 function enterDanger(now) {
   phase = "danger";
@@ -678,6 +798,7 @@ function enterCalm(now) {
   statusKey = holding ? "petting" : "idle";
   nextWarnAt = now + gapMs();
   setBanner("", "");
+  fakerPlanPress("calm", now);
 }
 function finishRun(now, kind) {
   releaseInputs();
@@ -687,7 +808,10 @@ function finishRun(now, kind) {
   statusKey = kind;
   setBanner("", "");
   showOutcome(kind);
-  loadBoard();
+  resultEl.scrollIntoView({ block: "nearest" });
+  fakerLiveRow = null;
+  if (fakerOn()) fakerSave();
+  else loadBoard();
 }
 function scratch(now) {
   hits += 1;
@@ -725,6 +849,12 @@ function clearStage(now) {
   statusKey = "clear";
   setBanner("", "");
   showOutcome("clear");
+  if (!fakerOn()) return;
+  const decision = MomoFaker.decidePet("clear", false, now, null, FakerPolicy.focusFromElapsed(now - startedAt));
+  MomoFaker.note(decision);
+  MomoFaker.planAt(now + Math.max(decision.rt, 700), (at) => {
+    if (phase === "clear") continueStage(at);
+  });
 }
 function continueStage(now) {
   const gap = Math.max(0, now - frozenAt);
@@ -760,6 +890,7 @@ function tick(now) {
   }
   const dt = lastNow ? Math.min(50, now - lastNow) : 16;
   lastNow = now;
+  if (fakerOn()) MomoFaker.poll(now);
   if (phase === "intro") {
     if (holding) sleep += spec().rate * dt / 1000;
     else sleep = Math.max(0, sleep - spec().decay * dt / 1000);
@@ -805,6 +936,7 @@ function togglePause() {
     startedAt += gap;
     phaseUntil += gap;
     nextWarnAt += gap;
+    if (fakerOn()) MomoFaker.shift(gap);
   }
   paused = false;
   overlay.hidden = true;
@@ -841,8 +973,9 @@ function normalize(list) {
     seen.add(id);
     rows.push({ name, stage: stageNo, ms, at });
   }
-  rows.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
-  return rows.slice(0, KEEP_N);
+  const latest = FakerPolicy.keepLatest(rows);
+  latest.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return latest.slice(0, KEEP_N);
 }
 function rowKey(row) { return row.name + "|" + row.stage + "|" + row.ms + "|" + row.at; }
 function readLocal() {
@@ -856,9 +989,15 @@ function formatWhen(iso) {
   const p = (n) => String(n).padStart(2, "0");
   return date.getFullYear() + "-" + p(date.getMonth() + 1) + "-" + p(date.getDate()) + " " + p(date.getHours()) + ":" + p(date.getMinutes());
 }
+function boardRows(list) {
+  const rows = list.slice();
+  if (fakerLiveRow && phase !== "win" && phase !== "lose") rows.push(fakerLiveRow);
+  rows.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return rows.slice(0, TOP_N);
+}
 function renderInto(el, list) {
   el.replaceChildren();
-  const top = list.slice(0, TOP_N);
+  const top = boardRows(list);
   if (!top.length) {
     const li = document.createElement("li");
     li.className = "empty";
@@ -869,14 +1008,28 @@ function renderInto(el, list) {
   top.forEach((row, i) => {
     const li = document.createElement("li");
     if (rowKey(row) === lastHighlight) li.className = "mine";
+    if (row.name === FakerPolicy.NAME) li.classList.add("faker");
+    if (row.live) li.classList.add("live");
     const rank = document.createElement("span");
     rank.textContent = String(i + 1);
     const name = document.createElement("span");
     name.textContent = row.name;
+    if (row.live) {
+      const badge = document.createElement("span");
+      badge.className = "live-badge";
+      badge.textContent = "LIVE";
+      name.append(badge);
+    }
+    if (row.localOnly) {
+      const badge = document.createElement("span");
+      badge.className = "local-badge";
+      badge.textContent = T().localTag;
+      name.append(badge);
+    }
     const score = document.createElement("span");
-    score.textContent = T().rankStage(row.stage);
+    score.textContent = row.label || T().rankStage(row.stage);
     const when = document.createElement("span");
-    when.textContent = (row.ms / 1000).toFixed(1) + T().unit + " " + formatWhen(row.at);
+    when.textContent = (row.ms / 1000).toFixed(1) + T().unit + (row.live ? "" : " " + formatWhen(row.at));
     li.append(rank, name, score, when);
     el.append(li);
   });
@@ -902,17 +1055,70 @@ async function putRemote(list) {
   if (!resp.ok) throw new Error(String(resp.status));
 }
 async function loadBoard() {
+  const token = ++boardToken;
   const local = readLocal();
   try {
     const remote = await fetchRemote();
-    lastList = normalize(remote.concat(local));
+    if (token !== boardToken) return;
+    try { if (remote.length) sessionStorage.setItem("momo-pet-remote-snapshot", JSON.stringify(remote)); } catch (err) {}
+    const merged = normalize(remote.concat(local));
+    lastList = FakerPolicy.tagLocal(remote, merged, "pet");
     boardNote = "";
-    writeLocal(lastList);
+    writeLocal(merged);
   } catch (err) {
-    lastList = local;
+    if (token !== boardToken) return;
+    lastList = FakerPolicy.tagLocal(null, local, "pet");
     boardNote = local.length ? "" : T().boardDown;
   }
   renderBoards();
+}
+async function commitScore(name, remember) {
+  if (runMs <= 0) return;
+  const at = new Date().toISOString();
+  const row = { name, stage: cleared, ms: runMs, at };
+  if (remember) localStorage.setItem(NAME_KEY, name);
+  lastHighlight = rowKey(row);
+  fakerLiveRow = null;
+  let remote = [];
+  let online = false;
+  try {
+    remote = await fetchRemote();
+    online = true;
+  } catch (err) {
+    online = false;
+  }
+  const next = normalize(remote.concat(readLocal(), [row]));
+  writeLocal(next);
+  lastList = FakerPolicy.tagLocal(online ? remote : null, next, "pet");
+  renderBoards();
+  const allowRemote = online && (!fakerOn() || FakerPolicy.plausiblePet(row.stage, row.ms));
+  let shared = false;
+  if (allowRemote) {
+    try {
+      const remembered = JSON.parse(sessionStorage.getItem("momo-pet-remote-snapshot") || "[]");
+      const latest = await fetchRemote();
+      let union = normalize([].concat(latest, remembered, next));
+      await putRemote(union);
+      const seen = await fetchRemote();
+      const healed = normalize([].concat(seen, union));
+      const seenIds = new Set(seen.map((item) => item.name + "|" + item.stage + "|" + item.ms + "|" + item.at));
+      if (healed.some((item) => !seenIds.has(item.name + "|" + item.stage + "|" + item.ms + "|" + item.at))) {
+        await putRemote(healed);
+        union = healed;
+      }
+      try { sessionStorage.setItem("momo-pet-remote-snapshot", JSON.stringify(union)); } catch (err) {}
+      writeLocal(union);
+      lastList = FakerPolicy.tagLocal(union, union, "pet");
+      shared = true;
+      renderBoards();
+    } catch (err) {
+      shared = false;
+    }
+  }
+  row.localOnly = !shared;
+  if (fakerOn()) MomoFaker.tell({ type: "saved", game: "pet", row });
+  saveMsg.textContent = shared ? T().saved : T().savedLocal;
+  saveBtn.disabled = true;
 }
 async function submitScore(event) {
   event.preventDefault();
@@ -922,33 +1128,17 @@ async function submitScore(event) {
     saveMsg.textContent = T().needName;
     return;
   }
-  if (runMs <= 0) return;
   saveMsg.textContent = "";
   saveBtn.disabled = true;
-  const at = new Date().toISOString();
-  const row = { name, stage: cleared, ms: runMs, at };
-  localStorage.setItem(NAME_KEY, name);
-  lastHighlight = rowKey(row);
-  let base = readLocal();
-  let online = false;
-  try {
-    base = normalize((await fetchRemote()).concat(base));
-    online = true;
-  } catch (err) {
-    online = false;
-  }
-  const next = normalize(base.concat([row]));
-  writeLocal(next);
-  lastList = next;
-  renderBoards();
-  saveMsg.textContent = online ? "" : T().savedLocal;
-  if (!online) return;
-  try {
-    await putRemote(next);
-    saveMsg.textContent = T().saved;
-  } catch (err) {
-    saveMsg.textContent = T().savedLocal;
-  }
+  await commitScore(name, true);
+}
+function fakerSave() {
+  if (!fakerOn() || fakerPosted) return;
+  fakerPosted = true;
+  nameEl.value = MomoFaker.NAME;
+  saveBtn.disabled = true;
+  saveMsg.textContent = "";
+  commitScore(MomoFaker.NAME, false);
 }
 
 formEl.addEventListener("submit", submitScore);
@@ -977,6 +1167,7 @@ document.addEventListener("click", (event) => {
   setLang(btn.dataset.lang);
 });
 stage.addEventListener("pointerdown", (event) => {
+  if (fakerOn()) return;
   if (event.button !== 0) return;
   if (event.target.closest("[data-lang], button, #score-form")) return;
   if (phase === "clear" || phase === "win" || phase === "lose") return;
@@ -986,8 +1177,16 @@ stage.addEventListener("pointerdown", (event) => {
   onPress(performance.now());
   syncHold();
 });
-window.addEventListener("pointerup", () => { pointerDown = false; syncHold(); });
-window.addEventListener("pointercancel", () => { pointerDown = false; syncHold(); });
+window.addEventListener("pointerup", () => {
+  if (fakerOn()) return;
+  pointerDown = false;
+  syncHold();
+});
+window.addEventListener("pointercancel", () => {
+  if (fakerOn()) return;
+  pointerDown = false;
+  syncHold();
+});
 window.addEventListener("keydown", (event) => {
   if (event.target.closest("input, textarea, button")) return;
   if (event.repeat) return;
@@ -997,6 +1196,10 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   if (event.code === "Space") {
+    if (fakerOn()) {
+      event.preventDefault();
+      return;
+    }
     if (phase === "clear" || phase === "win" || phase === "lose") {
       event.preventDefault();
       return;
@@ -1008,14 +1211,23 @@ window.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("keyup", (event) => {
-  if (event.code !== "Space") return;
+  if (event.code !== "Space" || fakerOn()) return;
   keyHold = false;
   syncHold();
 });
 
 loadLang();
+if (fakerOn()) {
+  document.body.dataset.faker = "1";
+  MomoFaker.mount("pet");
+  MomoFaker.syncLang(lang);
+}
 applyStatic();
 loadBoard();
+setInterval(() => {
+  if (document.hidden) return;
+  loadBoard();
+}, 5000);
 
 const needed = Object.keys(ART).length;
 for (const name of Object.keys(ART)) {
@@ -1048,8 +1260,17 @@ function boot() {
   phase = "start";
   statusKey = "start";
   showPose();
-  showOverlay(T().startTitle, T().start, T().startHint);
+  if (fakerOn()) showOverlay(T().fakerTitle, T().fakerStart, T().fakerHint);
+  else showOverlay(T().startTitle, T().start, T().startHint);
   paint(performance.now());
+  if (fakerOn()) {
+    const decision = MomoFaker.decidePet("start", false, performance.now(), null, 0);
+    MomoFaker.note(decision);
+    MomoFaker.planAt(decision.at, (at) => {
+      if (phase === "start") beginRun(at);
+    });
+    MomoFaker.startMusic();
+  }
   requestAnimationFrame(tick);
 }
 </script>
