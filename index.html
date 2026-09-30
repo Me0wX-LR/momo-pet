@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>摸毛毛</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    color: #f4f4f4;
+    font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  }
+  body {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 56px;
+    overflow: auto;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  #stage {
+    position: relative;
+    width: min(480px, 70vh, 86vw);
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+    background: #000;
+    border: 1px solid #1c1c1c;
+    overflow: hidden;
+    cursor: pointer;
+    touch-action: none;
+  }
+  #view {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    pointer-events: none;
+    transform: scale(0.92);
+    transition: transform 180ms ease;
+  }
+  #stage[data-phase="calm"][data-hold="1"] #view { transform: scale(0.96); }
+  #stage[data-phase="warn"] #view { transform: scale(0.98); }
+  #stage[data-phase="danger"] {
+    box-shadow: inset 0 0 0 8px #e2b340, 0 0 36px rgba(226, 179, 64, 0.55);
+    border-color: #e2b340;
+  }
+  #stage[data-phase="swat"], #stage[data-phase="lose"] { animation: shake 180ms linear; }
+  #stage[data-phase="win"] #view { transform: scale(1); }
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-12px); }
+    50% { transform: translateX(10px); }
+    75% { transform: translateX(-6px); }
+    100% { transform: translateX(0); }
+  }
+  #banner {
+    position: absolute;
+    z-index: 2;
+    top: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+    text-shadow: 0 2px 14px #000;
+    min-height: 1.1em;
+  }
+  #banner.warn { color: #f0c36a; }
+  #banner.pull { color: #ffe7a3; }
+  #banner.safe { color: #d7f0c4; }
+  #banner.hit { color: #ff6b6b; }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 28px;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.64);
+  }
+  #overlay[hidden] { display: none !important; }
+  .ov-title { font-size: 32px; font-weight: 700; line-height: 1.15; }
+  #overlay p { margin: 0; max-width: 34ch; color: #dedede; font-size: 16px; line-height: 1.45; }
+  #overlay .ov-hint { color: #9a9a9a; }
+  .readout { min-width: 300px; max-width: 380px; }
+  .goal {
+    color: #e2b340;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  .label { color: #9a9a9a; font-size: 15px; letter-spacing: 0.04em; }
+  .meter-row { display: flex; align-items: baseline; justify-content: space-between; }
+  #sleep-num { font-size: 64px; line-height: 0.95; font-variant-numeric: tabular-nums; margin: 4px 0 0; }
+  .bar {
+    height: 14px;
+    margin: 10px 0 18px;
+    background: #1c1c1c;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  #sleep-fill { height: 100%; width: 0%; background: #e2b340; }
+  .hands { display: flex; gap: 10px; margin: 6px 0 8px; }
+  .pip {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #e2b340;
+    background: #e2b340;
+  }
+  .pip.off { background: transparent; border-color: #555; }
+  .status { font-size: 28px; line-height: 1.35; margin: 12px 0 6px; min-height: 1.35em; }
+  .meta { color: #bdbdbd; font-size: 16px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+  .help { color: #8d8d8d; font-size: 15px; line-height: 1.45; margin-top: 12px; max-width: 36ch; }
+  .result { margin-top: 14px; }
+  .result[hidden] { display: none !important; }
+  .result h2 { margin: 0 0 8px; font-size: 32px; }
+  .result p { margin: 0 0 8px; line-height: 1.45; }
+  .langs { display: flex; gap: 8px; margin-top: 16px; }
+  .langs button {
+    background: #1c1c1c;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font: inherit;
+    cursor: pointer;
+  }
+  .langs button[aria-pressed="true"] { border-color: #f4f4f4; }
+  @media (max-width: 860px) {
+    body { flex-direction: column; gap: 20px; padding: 18px 0 28px; }
+    #stage { width: min(420px, 52vh, 88vw); }
+    #sleep-num { font-size: 52px; }
+    .readout { min-width: 0; padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+  <div id="stage" data-phase="start" data-hold="0">
+    <img id="view" alt="毛毛" width="768" height="768" draggable="false">
+    <div id="banner"></div>
+    <div id="overlay">
+      <div class="ov-title">載入中</div>
+    </div>
+  </div>
+  <div class="readout">
+    <div class="goal" id="goal"></div>
+    <div class="meter-row">
+      <span class="label" id="sleep-label">安眠</span>
+      <span id="sleep-num">0</span>
+    </div>
+    <div class="bar"><div id="sleep-fill"></div></div>
+    <div class="label" id="hand-label">抓痕</div>
+    <div class="hands" id="hands"></div>
+    <div class="status" id="status"></div>
+    <div class="meta" id="meta"></div>
+    <div class="help" id="help"></div>
+    <div class="result" id="result" hidden>
+      <h2 id="result-title"></h2>
+      <p id="result-body"></p>
+      <p id="result-hint"></p>
+    </div>
+    <div class="langs">
+      <button type="button" data-lang="zh-Hant">繁體</button>
+      <button type="button" data-lang="en">English</button>
+      <button type="button" data-lang="zh-Hans">简体</button>
+    </div>
+  </div>
+<script>
+const SLEEP_MAX = 100;
+const SLEEP_PER_SEC = 8;
+const HANDS_MAX = 3;
+const SCRATCH_PENALTY = 16;
+const WARN_MS = 640;
+const ART = {
+  calm: "art/calm.jpg",
+  pet: "art/pet.jpg",
+  warn: "art/warn.jpg",
+  swat: "art/swat.jpg",
+  sleep: "art/sleep.jpg"
+};
+const LANG_KEY = "momo-pet-lang";
+
+const STR = {
+  "zh-Hant": {
+    title: "摸毛毛",
+    goal: "目標：摸到毛毛瞓着",
+    sleep: "安眠",
+    hands: "剩低",
+    startTitle: "摸到佢瞓着",
+    start: [
+      "按住毛毛，安眠條先會升。",
+      "佢快嬲會豎毛、眯眼。金環一出，上面寫縮手，就要鬆開。",
+      "縮得切，佢會再俾你摸。抓中三次，佢就趕你走。"
+    ],
+    startHint: "按住畫面，或者按住空白鍵。Esc 暫停。",
+    help: "按住先算摸。見到縮手就鬆開。太早鬆開只會停低安眠，唔會扣。",
+    loading: "載入中",
+    missingTitle: "畫面檔沒載入",
+    missing: "請由呢個頁面旁邊的 art 資料夾打開。",
+    idle: "手放開",
+    petting: "摸緊",
+    warn: "快嬲",
+    pull: "縮手",
+    safe: "縮得切",
+    hit: "抓中",
+    pausedTitle: "暫停",
+    paused: ["毛毛等緊你。"],
+    pausedHint: "撳一下或者空白鍵繼續。",
+    meta: (t, saves, hits) => "用時 " + t + " 秒 · 縮手 " + saves + " · 抓中 " + hits,
+    winTitle: "毛毛瞓着了",
+    winBody: "你每次佢快嬲都縮到手，佢終於肯瞓。",
+    loseTitle: "毛毛趕你走",
+    loseBody: "抓滿三次。佢而家唔想俾人摸。",
+    retry: "再摸一次"
+  },
+  en: {
+    title: "Pet Momo",
+    goal: "Goal: pet him until he falls asleep",
+    sleep: "Sleep",
+    hands: "Lives",
+    startTitle: "Pet him to sleep",
+    start: [
+      "Hold on Momo. The sleep meter rises only while you pet him.",
+      "When he is about to get angry, his fur spikes and his eyes narrow. Let go when the ring says pull back.",
+      "Let go in time and he lets you pet again. Three scratches and he sends you away."
+    ],
+    startHint: "Hold on the picture, or hold Space. Esc pauses.",
+    help: "Hold to pet. Let go on pull back. Letting go early only pauses the meter.",
+    loading: "Loading",
+    missingTitle: "Pictures missing",
+    missing: "Open this page next to the art folder.",
+    idle: "Hand off",
+    petting: "Petting",
+    warn: "Getting mad",
+    pull: "Pull back",
+    safe: "Just in time",
+    hit: "Scratched",
+    pausedTitle: "Paused",
+    paused: ["Momo is waiting."],
+    pausedHint: "Click or Space to continue.",
+    meta: (t, saves, hits) => t + " s · pulled back " + saves + " · scratched " + hits,
+    winTitle: "Momo is asleep",
+    winBody: "You pulled your hand back each time he was about to get angry, and he finally slept.",
+    loseTitle: "Momo sent you away",
+    loseBody: "Three scratches. He does not want to be petted right now.",
+    retry: "Pet him again"
+  },
+  "zh-Hans": {
+    title: "摸毛毛",
+    goal: "目标：摸到毛毛睡着",
+    sleep: "安眠",
+    hands: "剩下",
+    startTitle: "摸到他睡着",
+    start: [
+      "按住毛毛，安眠条才会上升。",
+      "他快生气时会炸毛、眯眼。金环一亮，上面写着缩手，就要松开。",
+      "缩对了，他会让你继续摸。被抓中三次，他就把你赶走。"
+    ],
+    startHint: "按住画面，或者按住空格。Esc 暂停。",
+    help: "按住才算摸。见到缩手就松开。太早松开只会停住安眠，不会扣。",
+    loading: "加载中",
+    missingTitle: "画面没加载",
+    missing: "请从这个页面旁边的 art 文件夹打开。",
+    idle: "手离开",
+    petting: "摸着",
+    warn: "快生气",
+    pull: "缩手",
+    safe: "缩对了",
+    hit: "抓中",
+    pausedTitle: "暂停",
+    paused: ["毛毛在等你。"],
+    pausedHint: "点一下或者空格键继续。",
+    meta: (t, saves, hits) => "用时 " + t + " 秒 · 缩手 " + saves + " · 抓中 " + hits,
+    winTitle: "毛毛睡着了",
+    winBody: "每次他快生气你都缩了手，他终于肯睡。",
+    loseTitle: "毛毛把你赶走",
+    loseBody: "抓满三次。他现在不想被人摸。",
+    retry: "再摸一次"
+  }
+};
+
+const stage = document.getElementById("stage");
+const view = document.getElementById("view");
+const banner = document.getElementById("banner");
+const overlay = document.getElementById("overlay");
+const sleepNum = document.getElementById("sleep-num");
+const sleepFill = document.getElementById("sleep-fill");
+const handsEl = document.getElementById("hands");
+const statusEl = document.getElementById("status");
+const metaEl = document.getElementById("meta");
+const resultEl = document.getElementById("result");
+
+const frames = {};
+let loaded = 0;
+let readyStarted = false;
+let lang = "zh-Hant";
+let phase = "start";
+let holding = false;
+let keyHold = false;
+let paused = false;
+let sleep = 0;
+let hands = HANDS_MAX;
+let saves = 0;
+let hits = 0;
+let petMs = 0;
+let startedAt = 0;
+let frozenAt = 0;
+let phaseUntil = 0;
+let nextWarnAt = 0;
+let lastNow = 0;
+let statusKey = "loading";
+let audioCtx = null;
+
+function T() { return STR[lang] || STR["zh-Hant"]; }
+
+function loadLang() {
+  const saved = localStorage.getItem(LANG_KEY);
+  lang = STR[saved] ? saved : "zh-Hant";
+}
+
+function gapMs() {
+  return 3600 - 1600 * (sleep / SLEEP_MAX);
+}
+
+function dangerMs() {
+  return 500 - 180 * (sleep / SLEEP_MAX);
+}
+
+function showOverlay(title, lines, hint) {
+  overlay.replaceChildren();
+  const h = document.createElement("div");
+  h.className = "ov-title";
+  h.textContent = title;
+  overlay.append(h);
+  for (const line of lines) {
+    const p = document.createElement("p");
+    p.textContent = line;
+    overlay.append(p);
+  }
+  if (hint) {
+    const s = document.createElement("p");
+    s.className = "ov-hint";
+    s.textContent = hint;
+    overlay.append(s);
+  }
+  overlay.hidden = false;
+}
+
+function setBanner(text, kind) {
+  banner.textContent = text || "";
+  banner.className = kind || "";
+}
+
+function poseName() {
+  if (phase === "win") return "sleep";
+  if (phase === "lose" || phase === "swat") return "swat";
+  if (phase === "warn" || phase === "danger") return "warn";
+  if (holding && (phase === "calm" || phase === "start")) return "pet";
+  return "calm";
+}
+
+function showPose() {
+  const name = poseName();
+  const img = frames[name];
+  if (img && img.complete && img.naturalWidth) view.src = img.src;
+  stage.dataset.phase = phase;
+  stage.dataset.hold = holding ? "1" : "0";
+}
+
+function elapsed(now) {
+  if (phase === "start") return 0;
+  if (paused) return Math.max(0, frozenAt - startedAt);
+  if (phase === "win" || phase === "lose") return Math.max(0, frozenAt - startedAt);
+  return Math.max(0, now - startedAt);
+}
+
+function paint(now) {
+  const t = T();
+  const shown = Math.min(SLEEP_MAX, Math.floor(sleep));
+  sleepNum.textContent = String(shown);
+  sleepFill.style.width = Math.min(100, sleep) + "%";
+  handsEl.replaceChildren();
+  for (let i = 0; i < HANDS_MAX; i++) {
+    const pip = document.createElement("div");
+    pip.className = "pip" + (i < hands ? "" : " off");
+    handsEl.append(pip);
+  }
+  const map = {
+    loading: t.loading,
+    missing: t.missingTitle,
+    start: t.startTitle,
+    idle: t.idle,
+    petting: t.petting,
+    warn: t.warn,
+    pull: t.pull,
+    safe: t.safe,
+    hit: t.hit,
+    paused: t.pausedTitle,
+    win: t.winTitle,
+    lose: t.loseTitle
+  };
+  statusEl.textContent = map[statusKey] || "";
+  metaEl.textContent = phase === "start" ? "" : t.meta((elapsed(now) / 1000).toFixed(1), saves, hits);
+  showPose();
+}
+
+function applyStatic() {
+  const t = T();
+  document.documentElement.lang = lang;
+  document.title = t.title;
+  document.getElementById("goal").textContent = t.goal;
+  document.getElementById("sleep-label").textContent = t.sleep;
+  document.getElementById("hand-label").textContent = t.hands;
+  document.getElementById("help").textContent = t.help;
+  document.querySelectorAll("[data-lang]").forEach((btn) => {
+    btn.setAttribute("aria-pressed", btn.dataset.lang === lang ? "true" : "false");
+  });
+  if (phase === "win" || phase === "lose") fillResult();
+  if (phase === "start" && readyStarted) showOverlay(t.startTitle, t.start, t.startHint);
+  if (paused) showOverlay(t.pausedTitle, t.paused, t.pausedHint);
+  paint(performance.now());
+}
+
+function fillResult() {
+  const t = T();
+  const win = phase === "win";
+  document.getElementById("result-title").textContent = win ? t.winTitle : t.loseTitle;
+  document.getElementById("result-body").textContent = win ? t.winBody : t.loseBody;
+  document.getElementById("result-hint").textContent = t.retry;
+  resultEl.hidden = false;
+}
+
+function setLang(next) {
+  if (!STR[next]) return;
+  lang = next;
+  localStorage.setItem(LANG_KEY, lang);
+  applyStatic();
+}
+
+function ensureAudio() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (err) {}
+}
+
+function blip(freq, dur, type) {
+  try {
+    if (!audioCtx || audioCtx.state !== "running") return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.05, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  } catch (err) {}
+}
+
+function begin(now) {
+  sleep = 0;
+  hands = HANDS_MAX;
+  saves = 0;
+  hits = 0;
+  petMs = 0;
+  paused = false;
+  startedAt = now;
+  lastNow = now;
+  phase = "calm";
+  statusKey = holding ? "petting" : "idle";
+  nextWarnAt = now + gapMs();
+  phaseUntil = 0;
+  overlay.hidden = true;
+  resultEl.hidden = true;
+  setBanner("", "");
+  paint(now);
+}
+
+function enterWarn(now) {
+  phase = "warn";
+  statusKey = "warn";
+  phaseUntil = now + WARN_MS;
+  setBanner(T().warn, "warn");
+  blip(520, 0.08, "triangle");
+}
+
+function enterDanger(now) {
+  phase = "danger";
+  statusKey = "pull";
+  phaseUntil = now + dangerMs();
+  setBanner(T().pull, "pull");
+  blip(880, 0.05, "square");
+}
+
+function enterCalm(now) {
+  phase = "calm";
+  statusKey = holding ? "petting" : "idle";
+  nextWarnAt = now + gapMs();
+  setBanner("", "");
+}
+
+function scratch(now) {
+  hits += 1;
+  hands -= 1;
+  sleep = Math.max(0, sleep - SCRATCH_PENALTY);
+  blip(110, 0.12, "sawtooth");
+  setBanner(T().hit, "hit");
+  if (hands <= 0) {
+    phase = "lose";
+    statusKey = "lose";
+    frozenAt = now;
+    fillResult();
+    return;
+  }
+  phase = "swat";
+  statusKey = "hit";
+  phaseUntil = now + 700;
+}
+
+function saved(now) {
+  saves += 1;
+  phase = "safe";
+  statusKey = "safe";
+  phaseUntil = now + 380;
+  setBanner(T().safe, "safe");
+  blip(660, 0.06, "sine");
+}
+
+function win(now) {
+  sleep = SLEEP_MAX;
+  phase = "win";
+  statusKey = "win";
+  frozenAt = now;
+  holding = false;
+  keyHold = false;
+  setBanner("", "");
+  fillResult();
+}
+
+function syncHold() {
+  holding = keyHold || pointerDown;
+  if (phase === "calm") statusKey = holding ? "petting" : "idle";
+}
+
+let pointerDown = false;
+
+function tick(now) {
+  requestAnimationFrame(tick);
+  if (!readyStarted) return;
+  if (paused) return;
+  if (lastNow && now - lastNow > 80 && phase !== "start" && phase !== "win" && phase !== "lose") {
+    const extra = now - lastNow - 16;
+    phaseUntil += extra;
+    nextWarnAt += extra;
+    startedAt += extra;
+  }
+  const dt = lastNow ? Math.min(50, now - lastNow) : 16;
+  lastNow = now;
+  if (phase === "calm") {
+    if (holding) {
+      sleep += SLEEP_PER_SEC * dt / 1000;
+      petMs += dt;
+      if (sleep >= SLEEP_MAX) {
+        win(now);
+        paint(now);
+        return;
+      }
+    }
+    if (now >= nextWarnAt) enterWarn(now);
+  } else if (phase === "warn" && now >= phaseUntil) enterDanger(now);
+  else if (phase === "danger" && now >= phaseUntil) {
+    if (holding) scratch(now);
+    else saved(now);
+  } else if ((phase === "safe" || phase === "swat") && now >= phaseUntil) enterCalm(now);
+  paint(now);
+}
+
+function togglePause() {
+  if (phase === "start" || phase === "win" || phase === "lose") return;
+  if (!paused) {
+    paused = true;
+    frozenAt = performance.now();
+    showOverlay(T().pausedTitle, T().paused, T().pausedHint);
+    paint(frozenAt);
+    return;
+  }
+  const now = performance.now();
+  const gap = now - frozenAt;
+  if (gap > 0) {
+    startedAt += gap;
+    phaseUntil += gap;
+    nextWarnAt += gap;
+  }
+  paused = false;
+  overlay.hidden = true;
+  lastNow = now;
+}
+
+function onPress(now) {
+  ensureAudio();
+  if (paused) {
+    togglePause();
+    return;
+  }
+  if (phase === "start" || phase === "win" || phase === "lose") {
+    begin(now);
+  }
+}
+
+document.getElementById("result").addEventListener("pointerdown", (event) => {
+  if (phase !== "win" && phase !== "lose") return;
+  event.preventDefault();
+  pointerDown = true;
+  onPress(performance.now());
+  syncHold();
+});
+
+stage.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  if (event.target.closest("[data-lang]")) return;
+  event.preventDefault();
+  pointerDown = true;
+  try { stage.setPointerCapture(event.pointerId); } catch (err) {}
+  onPress(performance.now());
+  syncHold();
+});
+
+window.addEventListener("pointerup", () => {
+  pointerDown = false;
+  syncHold();
+});
+window.addEventListener("pointercancel", () => {
+  pointerDown = false;
+  syncHold();
+});
+
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-lang]");
+  if (!btn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  setLang(btn.dataset.lang);
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.target.closest("input, textarea, button")) return;
+  if (event.repeat) return;
+  if (event.code === "Escape") {
+    event.preventDefault();
+    togglePause();
+    return;
+  }
+  if (event.code === "Space") {
+    event.preventDefault();
+    keyHold = true;
+    onPress(performance.now());
+    syncHold();
+  }
+});
+
+window.addEventListener("keyup", (event) => {
+  if (event.code !== "Space") return;
+  keyHold = false;
+  syncHold();
+});
+
+loadLang();
+applyStatic();
+
+let needed = Object.keys(ART).length;
+for (const name of Object.keys(ART)) {
+  const img = new Image();
+  frames[name] = img;
+  const done = () => {
+    if (img.__counted) return;
+    img.__counted = true;
+    loaded += 1;
+    if (!readyStarted) {
+      const title = overlay.querySelector(".ov-title");
+      if (title) title.textContent = T().loading + " " + loaded + " / " + needed;
+    }
+    if (loaded === needed) boot();
+  };
+  img.onload = done;
+  img.onerror = done;
+  img.src = ART[name];
+  if (img.complete) done();
+}
+
+function boot() {
+  const failed = Object.values(frames).filter((img) => !img.naturalWidth).length;
+  if (failed) {
+    showOverlay(T().missingTitle, [T().missing], "");
+    statusKey = "missing";
+    paint(performance.now());
+    return;
+  }
+  readyStarted = true;
+  phase = "start";
+  statusKey = "start";
+  showPose();
+  showOverlay(T().startTitle, T().start, T().startHint);
+  paint(performance.now());
+  requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
