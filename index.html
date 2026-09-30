@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>摸毛毛</title>
 <style>
   html, body {
@@ -11,6 +11,8 @@
     background: #000;
     color: #f4f4f4;
     font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    overscroll-behavior: none;
+    -webkit-touch-callout: none;
   }
   body {
     min-height: 100%;
@@ -20,7 +22,7 @@
     gap: 56px;
     overflow: auto;
     user-select: none;
-    touch-action: manipulation;
+    touch-action: none;
   }
   #stage {
     position: relative;
@@ -44,14 +46,15 @@
     transform: scale(0.92);
     transition: transform 180ms ease;
   }
-  #stage[data-phase="calm"][data-hold="1"] #view { transform: scale(0.96); }
+  #stage[data-phase="calm"][data-hold="1"] #view,
+  #stage[data-phase="intro"][data-hold="1"] #view { transform: scale(0.96); }
   #stage[data-phase="warn"] #view { transform: scale(0.98); }
   #stage[data-phase="danger"] {
     box-shadow: inset 0 0 0 8px #e2b340, 0 0 36px rgba(226, 179, 64, 0.55);
     border-color: #e2b340;
   }
   #stage[data-phase="swat"], #stage[data-phase="lose"] { animation: shake 180ms linear; }
-  #stage[data-phase="win"] #view { transform: scale(1); }
+  #stage[data-phase="win"] #view, #stage[data-phase="clear"] #view { transform: scale(1); }
   @keyframes shake {
     0% { transform: translateX(0); }
     25% { transform: translateX(-12px); }
@@ -68,7 +71,7 @@
     text-align: center;
     font-size: 42px;
     font-weight: 800;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     pointer-events: none;
     text-shadow: 0 2px 14px #000;
     min-height: 1.1em;
@@ -94,56 +97,90 @@
   .ov-title { font-size: 32px; font-weight: 700; line-height: 1.15; }
   #overlay p { margin: 0; max-width: 34ch; color: #dedede; font-size: 16px; line-height: 1.45; }
   #overlay .ov-hint { color: #9a9a9a; }
-  .readout { min-width: 300px; max-width: 380px; }
-  .goal {
-    color: #e2b340;
-    font-size: 15px;
-    letter-spacing: 0.04em;
-    margin-bottom: 8px;
-  }
+  .readout { min-width: 300px; max-width: 400px; }
+  .goal { color: #e2b340; font-size: 18px; letter-spacing: 0.04em; margin-bottom: 8px; }
   .label { color: #9a9a9a; font-size: 15px; letter-spacing: 0.04em; }
   .meter-row { display: flex; align-items: baseline; justify-content: space-between; }
   #sleep-num { font-size: 64px; line-height: 0.95; font-variant-numeric: tabular-nums; margin: 4px 0 0; }
-  .bar {
-    height: 14px;
-    margin: 10px 0 18px;
-    background: #1c1c1c;
-    border-radius: 99px;
-    overflow: hidden;
-  }
+  .bar { height: 14px; margin: 10px 0 18px; background: #1c1c1c; border-radius: 99px; overflow: hidden; }
   #sleep-fill { height: 100%; width: 0%; background: #e2b340; }
-  .hands { display: flex; gap: 10px; margin: 6px 0 8px; }
-  .pip {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid #e2b340;
-    background: #e2b340;
-  }
+  .hands { display: flex; gap: 8px; margin: 6px 0 8px; }
+  .pip { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #e2b340; background: #e2b340; }
   .pip.off { background: transparent; border-color: #555; }
   .status { font-size: 28px; line-height: 1.35; margin: 12px 0 6px; min-height: 1.35em; }
   .meta { color: #bdbdbd; font-size: 16px; line-height: 1.5; font-variant-numeric: tabular-nums; }
-  .help { color: #8d8d8d; font-size: 15px; line-height: 1.45; margin-top: 12px; max-width: 36ch; }
-  .result { margin-top: 14px; }
-  .result[hidden] { display: none !important; }
-  .result h2 { margin: 0 0 8px; font-size: 32px; }
-  .result p { margin: 0 0 8px; line-height: 1.45; }
-  .langs { display: flex; gap: 8px; margin-top: 16px; }
-  .langs button {
+  .help { color: #8d8d8d; font-size: 15px; line-height: 1.45; margin-top: 12px; max-width: 38ch; }
+  #pause-btn, .langs button, #next-btn, #retry-btn, #save-btn {
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  #pause-btn, .langs button {
     background: #1c1c1c;
     color: #fff;
     border: 1px solid #444;
     border-radius: 8px;
-    padding: 6px 12px;
-    font: inherit;
-    cursor: pointer;
+    padding: 8px 12px;
+    min-height: 40px;
   }
+  #pause-btn { margin-top: 12px; }
+  .langs { display: flex; gap: 8px; margin-top: 16px; }
   .langs button[aria-pressed="true"] { border-color: #f4f4f4; }
+  .result { margin-top: 16px; }
+  .result[hidden] { display: none !important; }
+  .result h2 { margin: 0 0 8px; font-size: 30px; }
+  .result p { margin: 0 0 8px; line-height: 1.45; }
+  #score-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  #score-form[hidden] { display: none !important; }
+  #name {
+    font: inherit;
+    font-size: 16px;
+    width: 12ch;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #666;
+    background: #111;
+    color: #fff;
+  }
+  #save-btn, #next-btn, #retry-btn {
+    min-height: 48px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 2px solid #e2b340;
+    background: #e2b340;
+    color: #1a1a1a;
+    font-weight: 700;
+  }
+  #retry-btn { background: transparent; color: #f4f4f4; }
+  #save-msg { width: 100%; min-height: 1.3em; color: #d7d7d7; font-size: 14px; }
+  .board-title { margin: 16px 0 8px; font-size: 15px; color: #9a9a9a; }
+  .board { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .board li {
+    display: grid;
+    grid-template-columns: 1.6em 1fr auto auto;
+    gap: 8px;
+    padding: 3px 0;
+    color: #d0d0d0;
+  }
+  .board .empty { display: block; color: #8d8d8d; }
+  .board .mine { color: #ffe7a3; font-weight: 700; }
   @media (max-width: 860px) {
-    body { flex-direction: column; gap: 20px; padding: 18px 0 28px; }
-    #stage { width: min(420px, 52vh, 88vw); }
-    #sleep-num { font-size: 52px; }
-    .readout { min-width: 0; padding: 0 20px; }
+    body {
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 8px;
+      min-height: 0;
+      height: 100dvh;
+      overflow: auto;
+      padding: env(safe-area-inset-top) 0 calc(12px + env(safe-area-inset-bottom));
+    }
+    #stage { width: min(92vw, 42dvh); margin-top: 6px; }
+    #banner { font-size: 32px; top: 8px; }
+    .readout { min-width: 0; width: 100%; padding: 0 16px; box-sizing: border-box; }
+    #sleep-num { font-size: 48px; }
+    .help, #side-wrap { display: none; }
+    .langs button, #pause-btn, #next-btn, #retry-btn, #save-btn { min-height: 44px; }
   }
 </style>
 </head>
@@ -151,9 +188,7 @@
   <div id="stage" data-phase="start" data-hold="0">
     <img id="view" alt="毛毛" width="768" height="768" draggable="false">
     <div id="banner"></div>
-    <div id="overlay">
-      <div class="ov-title">載入中</div>
-    </div>
+    <div id="overlay"><div class="ov-title">載入中</div></div>
   </div>
   <div class="readout">
     <div class="goal" id="goal"></div>
@@ -162,15 +197,31 @@
       <span id="sleep-num">0</span>
     </div>
     <div class="bar"><div id="sleep-fill"></div></div>
-    <div class="label" id="hand-label">抓痕</div>
+    <div class="label" id="hand-label">剩低</div>
     <div class="hands" id="hands"></div>
     <div class="status" id="status"></div>
     <div class="meta" id="meta"></div>
     <div class="help" id="help"></div>
+    <button type="button" id="pause-btn">暫停</button>
     <div class="result" id="result" hidden>
       <h2 id="result-title"></h2>
       <p id="result-body"></p>
-      <p id="result-hint"></p>
+      <form id="score-form" hidden>
+        <label id="name-label" for="name">名稱</label>
+        <input id="name" name="name" maxlength="10" autocomplete="nickname" enterkeyhint="done">
+        <button id="save-btn" type="submit">記入排行</button>
+        <div id="save-msg"></div>
+      </form>
+      <div id="end-wrap">
+        <div class="board-title" id="end-board-title"></div>
+        <ol class="board" id="end-board"></ol>
+      </div>
+      <button type="button" id="next-btn" hidden>下一關</button>
+      <button type="button" id="retry-btn" hidden>由第 1 關再嚟</button>
+    </div>
+    <div id="side-wrap">
+      <div class="board-title" id="side-board-title"></div>
+      <ol class="board" id="side-board"></ol>
     </div>
     <div class="langs">
       <button type="button" data-lang="zh-Hant">繁體</button>
@@ -180,10 +231,6 @@
   </div>
 <script>
 const SLEEP_MAX = 100;
-const SLEEP_PER_SEC = 8;
-const HANDS_MAX = 3;
-const SCRATCH_PENALTY = 16;
-const WARN_MS = 640;
 const ART = {
   calm: "art/calm.jpg",
   pet: "art/pet.jpg",
@@ -191,22 +238,40 @@ const ART = {
   swat: "art/swat.jpg",
   sleep: "art/sleep.jpg"
 };
+const STAGES = [
+  { lives: 5, warn: 1000, danger: 800, gap0: 4200, gap1: 3600, rate: 16, penalty: 6, decay: 2 },
+  { lives: 4, warn: 800, danger: 600, gap0: 3800, gap1: 3200, rate: 14, penalty: 8, decay: 3 },
+  { lives: 4, warn: 650, danger: 480, gap0: 3400, gap1: 2800, rate: 12, penalty: 10, decay: 4 },
+  { lives: 3, warn: 520, danger: 380, gap0: 3100, gap1: 2500, rate: 11, penalty: 12, decay: 6 },
+  { lives: 3, warn: 420, danger: 300, gap0: 2800, gap1: 2200, rate: 10, penalty: 14, decay: 8 },
+  { lives: 2, warn: 320, danger: 230, gap0: 2500, gap1: 1900, rate: 9, penalty: 16, decay: 11 },
+  { lives: 2, warn: 250, danger: 170, gap0: 2200, gap1: 1700, rate: 8.5, penalty: 18, decay: 14 },
+  { lives: 1, warn: 180, danger: 130, gap0: 2000, gap1: 1600, rate: 8, penalty: 20, decay: 18 },
+  { lives: 1, warn: 130, danger: 100, gap0: 1900, gap1: 1500, rate: 8, penalty: 24, decay: 22 },
+  { lives: 1, warn: 80, danger: 70, gap0: 1800, gap1: 1400, rate: 8, penalty: 30, decay: 26 }
+];
+const BOARD_URL = "https://kvs.ix.workers.dev/momo-parry-me0wx-lr/pet-scores";
+const LOCAL_KEY = "momo-pet-board";
 const LANG_KEY = "momo-pet-lang";
+const NAME_KEY = "momo-pet-name";
+const TOP_N = 10;
+const KEEP_N = 30;
 
 const STR = {
   "zh-Hant": {
     title: "摸毛毛",
-    goal: "目標：摸到毛毛瞓着",
+    names: ["熱身", "開始留神", "有啲唔耐煩", "要縮手", "開始難", "好易嬲", "幾乎無預告", "一抓就完", "超人邊緣", "Faker"],
+    goal: (n, name) => "第 " + n + " / 10 關 · " + name,
     sleep: "安眠",
     hands: "剩低",
-    startTitle: "摸到佢瞓着",
+    startTitle: "十關摸到佢瞓",
     start: [
-      "按住毛毛，安眠條先會升。",
-      "佢快嬲會豎毛、眯眼。金環一出，上面寫縮手，就要鬆開。",
-      "縮得切，佢會再俾你摸。抓中三次，佢就趕你走。"
+      "按住毛毛，安眠條先會升。快嬲就縮手。",
+      "一關過咗先去下一關。第 10 關得 Faker 嗰種反應先過到。",
+      "抓完就當次完。可以留名，最多 10 個字。"
     ],
     startHint: "按住畫面，或者按住空白鍵。Esc 暫停。",
-    help: "按住先算摸。見到縮手就鬆開。太早鬆開只會停低安眠，唔會扣。",
+    help: "按住先算摸。見到縮手就鬆開。太早鬆開，安眠會跌，越後跌得越快。",
     loading: "載入中",
     missingTitle: "畫面檔沒載入",
     missing: "請由呢個頁面旁邊的 art 資料夾打開。",
@@ -216,29 +281,45 @@ const STR = {
     pull: "縮手",
     safe: "縮得切",
     hit: "抓中",
+    intro: (n, name) => "第 " + n + " 關 · " + name,
     pausedTitle: "暫停",
+    pauseBtn: "暫停",
     paused: ["毛毛等緊你。"],
     pausedHint: "撳一下或者空白鍵繼續。",
     meta: (t, saves, hits) => "用時 " + t + " 秒 · 縮手 " + saves + " · 抓中 " + hits,
-    winTitle: "毛毛瞓着了",
-    winBody: "你每次佢快嬲都縮到手，佢終於肯瞓。",
+    clearedTitle: (n) => "第 " + n + " 關過咗",
+    clearedBody: "撳下一關先繼續。亂撳畫面唔會計。",
+    next: "下一關",
+    winTitle: "十關都過咗",
+    winBody: "第 10 關都縮到手。留個名上去。",
     loseTitle: "毛毛趕你走",
-    loseBody: "抓滿三次。佢而家唔想俾人摸。",
-    retry: "再摸一次"
+    loseBody: (n) => "你過咗 " + n + " 關。留個名，最多 10 個字。",
+    retry: "由第 1 關再嚟",
+    board: "最高紀錄",
+    empty: "還沒有紀錄。",
+    boardDown: "排行榜讀不到。",
+    name: "名稱",
+    save: "記入排行",
+    needName: "先輸入名稱，最多 10 個字。",
+    saved: "已記入排行。",
+    savedLocal: "呢台電腦記住咗。網上排行未收到。",
+    unit: "秒",
+    rankStage: (n) => n >= 10 ? "通關" : n <= 0 ? "未過關" : "第 " + n + " 關"
   },
   en: {
     title: "Pet Momo",
-    goal: "Goal: pet him until he falls asleep",
+    names: ["Warm-up", "Pay attention", "Getting fussy", "Pull back", "It gets hard", "He snaps fast", "Almost no tell", "One scratch ends it", "Barely human", "Faker"],
+    goal: (n, name) => "Stage " + n + " / 10 · " + name,
     sleep: "Sleep",
     hands: "Lives",
-    startTitle: "Pet him to sleep",
+    startTitle: "Ten stages to sleep",
     start: [
-      "Hold on Momo. The sleep meter rises only while you pet him.",
-      "When he is about to get angry, his fur spikes and his eyes narrow. Let go when the ring says pull back.",
-      "Let go in time and he lets you pet again. Three scratches and he sends you away."
+      "Hold on Momo. Let go when he is about to get angry.",
+      "Clear a stage to continue. Stage 10 is only for a Faker-level reaction.",
+      "When your lives run out, the run ends. Leave a name, up to 10 characters."
     ],
     startHint: "Hold on the picture, or hold Space. Esc pauses.",
-    help: "Hold to pet. Let go on pull back. Letting go early only pauses the meter.",
+    help: "Hold to pet. Let go on pull back. Letting go early drops the meter, faster on later stages.",
     loading: "Loading",
     missingTitle: "Pictures missing",
     missing: "Open this page next to the art folder.",
@@ -248,29 +329,45 @@ const STR = {
     pull: "Pull back",
     safe: "Just in time",
     hit: "Scratched",
+    intro: (n, name) => "Stage " + n + " · " + name,
     pausedTitle: "Paused",
+    pauseBtn: "Pause",
     paused: ["Momo is waiting."],
     pausedHint: "Click or Space to continue.",
     meta: (t, saves, hits) => t + " s · pulled back " + saves + " · scratched " + hits,
-    winTitle: "Momo is asleep",
-    winBody: "You pulled your hand back each time he was about to get angry, and he finally slept.",
+    clearedTitle: (n) => "Stage " + n + " clear",
+    clearedBody: "Press Next. Clicking the picture does not continue.",
+    next: "Next stage",
+    winTitle: "All ten stages",
+    winBody: "You cleared stage 10. Leave your name.",
     loseTitle: "Momo sent you away",
-    loseBody: "Three scratches. He does not want to be petted right now.",
-    retry: "Pet him again"
+    loseBody: (n) => "You cleared " + n + " stage" + (n === 1 ? "" : "s") + ". Leave a name, up to 10 characters.",
+    retry: "From stage 1",
+    board: "High scores",
+    empty: "No scores yet.",
+    boardDown: "The board could not be read.",
+    name: "Name",
+    save: "Save score",
+    needName: "Enter a name, up to 10 characters.",
+    saved: "Saved on the board.",
+    savedLocal: "Saved on this computer. The online board did not take it.",
+    unit: "s",
+    rankStage: (n) => n >= 10 ? "Clear" : n <= 0 ? "No clear" : "Stage " + n
   },
   "zh-Hans": {
     title: "摸毛毛",
-    goal: "目标：摸到毛毛睡着",
+    names: ["热身", "开始留神", "有点不耐烦", "要缩手", "开始难", "很容易生气", "几乎没预告", "一抓就完", "超人边缘", "Faker"],
+    goal: (n, name) => "第 " + n + " / 10 关 · " + name,
     sleep: "安眠",
     hands: "剩下",
-    startTitle: "摸到他睡着",
+    startTitle: "十关摸到他睡",
     start: [
-      "按住毛毛，安眠条才会上升。",
-      "他快生气时会炸毛、眯眼。金环一亮，上面写着缩手，就要松开。",
-      "缩对了，他会让你继续摸。被抓中三次，他就把你赶走。"
+      "按住毛毛，安眠条才会上升。快生气就缩手。",
+      "过了一关才去下一关。第 10 关只有 Faker 那种反应才过得去。",
+      "抓完这一次就结束。可以留名，最多 10 个字。"
     ],
     startHint: "按住画面，或者按住空格。Esc 暂停。",
-    help: "按住才算摸。见到缩手就松开。太早松开只会停住安眠，不会扣。",
+    help: "按住才算摸。见到缩手就松开。太早松开，安眠会掉，越往后掉得越快。",
     loading: "加载中",
     missingTitle: "画面没加载",
     missing: "请从这个页面旁边的 art 文件夹打开。",
@@ -280,15 +377,30 @@ const STR = {
     pull: "缩手",
     safe: "缩对了",
     hit: "抓中",
+    intro: (n, name) => "第 " + n + " 关 · " + name,
     pausedTitle: "暂停",
+    pauseBtn: "暂停",
     paused: ["毛毛在等你。"],
     pausedHint: "点一下或者空格键继续。",
     meta: (t, saves, hits) => "用时 " + t + " 秒 · 缩手 " + saves + " · 抓中 " + hits,
-    winTitle: "毛毛睡着了",
-    winBody: "每次他快生气你都缩了手，他终于肯睡。",
+    clearedTitle: (n) => "第 " + n + " 关过了",
+    clearedBody: "按下一关才继续。乱点画面不算。",
+    next: "下一关",
+    winTitle: "十关都过了",
+    winBody: "第 10 关也缩到手了。留个名上去。",
     loseTitle: "毛毛把你赶走",
-    loseBody: "抓满三次。他现在不想被人摸。",
-    retry: "再摸一次"
+    loseBody: (n) => "你过了 " + n + " 关。留个名，最多 10 个字。",
+    retry: "从第 1 关再来",
+    board: "最高纪录",
+    empty: "还没有纪录。",
+    boardDown: "排行榜读不到。",
+    name: "名称",
+    save: "记入排行",
+    needName: "先输入名称，最多 10 个字。",
+    saved: "已记入排行。",
+    savedLocal: "这台电脑记住了。网上排行没收到。",
+    unit: "秒",
+    rankStage: (n) => n >= 10 ? "通关" : n <= 0 ? "未过关" : "第 " + n + " 关"
   }
 };
 
@@ -302,41 +414,55 @@ const handsEl = document.getElementById("hands");
 const statusEl = document.getElementById("status");
 const metaEl = document.getElementById("meta");
 const resultEl = document.getElementById("result");
+const formEl = document.getElementById("score-form");
+const nameEl = document.getElementById("name");
+const saveBtn = document.getElementById("save-btn");
+const saveMsg = document.getElementById("save-msg");
+const nextBtn = document.getElementById("next-btn");
+const retryBtn = document.getElementById("retry-btn");
 
 const frames = {};
 let loaded = 0;
 let readyStarted = false;
 let lang = "zh-Hant";
 let phase = "start";
+let stageIndex = 0;
 let holding = false;
 let keyHold = false;
+let pointerDown = false;
 let paused = false;
 let sleep = 0;
-let hands = HANDS_MAX;
+let hands = STAGES[0].lives;
 let saves = 0;
 let hits = 0;
-let petMs = 0;
 let startedAt = 0;
 let frozenAt = 0;
 let phaseUntil = 0;
-let nextWarnAt = 0;
+let nextWarnAt = Infinity;
 let lastNow = 0;
 let statusKey = "loading";
+let runMs = 0;
+let cleared = 0;
 let audioCtx = null;
+let lastList = [];
+let lastHighlight = "";
+let boardNote = "";
 
 function T() { return STR[lang] || STR["zh-Hant"]; }
-
+function spec() { return STAGES[stageIndex]; }
 function loadLang() {
   const saved = localStorage.getItem(LANG_KEY);
   lang = STR[saved] ? saved : "zh-Hant";
 }
-
 function gapMs() {
-  return 3600 - 1600 * (sleep / SLEEP_MAX);
+  const s = spec();
+  const k = Math.max(0, Math.min(1, sleep / SLEEP_MAX));
+  const base = s.gap0 + (s.gap1 - s.gap0) * k;
+  const jitter = (Math.random() * 2 - 1) * base * 0.28;
+  return Math.max(700, base + jitter);
 }
-
 function dangerMs() {
-  return 500 - 180 * (sleep / SLEEP_MAX);
+  return spec().danger * (1 - 0.15 * Math.max(0, Math.min(1, sleep / SLEEP_MAX)));
 }
 
 function showOverlay(title, lines, hint) {
@@ -358,46 +484,41 @@ function showOverlay(title, lines, hint) {
   }
   overlay.hidden = false;
 }
-
 function setBanner(text, kind) {
   banner.textContent = text || "";
   banner.className = kind || "";
 }
-
 function poseName() {
-  if (phase === "win") return "sleep";
+  if (phase === "win" || phase === "clear") return "sleep";
   if (phase === "lose" || phase === "swat") return "swat";
   if (phase === "warn" || phase === "danger") return "warn";
-  if (holding && (phase === "calm" || phase === "start")) return "pet";
+  if (holding && (phase === "calm" || phase === "intro" || phase === "start")) return "pet";
   return "calm";
 }
-
 function showPose() {
-  const name = poseName();
-  const img = frames[name];
+  const img = frames[poseName()];
   if (img && img.complete && img.naturalWidth) view.src = img.src;
   stage.dataset.phase = phase;
   stage.dataset.hold = holding ? "1" : "0";
 }
-
 function elapsed(now) {
   if (phase === "start") return 0;
-  if (paused) return Math.max(0, frozenAt - startedAt);
-  if (phase === "win" || phase === "lose") return Math.max(0, frozenAt - startedAt);
+  if (paused || phase === "clear" || phase === "win" || phase === "lose") return Math.max(0, frozenAt - startedAt);
   return Math.max(0, now - startedAt);
 }
-
 function paint(now) {
   const t = T();
   const shown = Math.min(SLEEP_MAX, Math.floor(sleep));
   sleepNum.textContent = String(shown);
   sleepFill.style.width = Math.min(100, sleep) + "%";
+  const maxLives = spec().lives;
   handsEl.replaceChildren();
-  for (let i = 0; i < HANDS_MAX; i++) {
+  for (let i = 0; i < maxLives; i++) {
     const pip = document.createElement("div");
     pip.className = "pip" + (i < hands ? "" : " off");
     handsEl.append(pip);
   }
+  document.getElementById("goal").textContent = t.goal(stageIndex + 1, t.names[stageIndex]);
   const map = {
     loading: t.loading,
     missing: t.missingTitle,
@@ -409,6 +530,8 @@ function paint(now) {
     safe: t.safe,
     hit: t.hit,
     paused: t.pausedTitle,
+    intro: t.intro(stageIndex + 1, t.names[stageIndex]),
+    clear: t.clearedTitle(stageIndex + 1),
     win: t.winTitle,
     lose: t.loseTitle
   };
@@ -416,40 +539,66 @@ function paint(now) {
   metaEl.textContent = phase === "start" ? "" : t.meta((elapsed(now) / 1000).toFixed(1), saves, hits);
   showPose();
 }
-
 function applyStatic() {
   const t = T();
   document.documentElement.lang = lang;
   document.title = t.title;
-  document.getElementById("goal").textContent = t.goal;
   document.getElementById("sleep-label").textContent = t.sleep;
   document.getElementById("hand-label").textContent = t.hands;
   document.getElementById("help").textContent = t.help;
+  document.getElementById("pause-btn").textContent = t.pauseBtn;
+  document.getElementById("name-label").textContent = t.name;
+  document.getElementById("side-board-title").textContent = t.board;
+  document.getElementById("end-board-title").textContent = t.board;
+  saveBtn.textContent = t.save;
+  nextBtn.textContent = t.next;
+  retryBtn.textContent = t.retry;
+  nameEl.placeholder = t.needName;
   document.querySelectorAll("[data-lang]").forEach((btn) => {
     btn.setAttribute("aria-pressed", btn.dataset.lang === lang ? "true" : "false");
   });
-  if (phase === "win" || phase === "lose") fillResult();
   if (phase === "start" && readyStarted) showOverlay(t.startTitle, t.start, t.startHint);
   if (paused) showOverlay(t.pausedTitle, t.paused, t.pausedHint);
+  if (phase === "clear") showOutcome("clear");
+  if (phase === "win") showOutcome("win");
+  if (phase === "lose") showOutcome("lose");
   paint(performance.now());
+  renderBoards();
 }
-
-function fillResult() {
+function showOutcome(kind) {
   const t = T();
-  const win = phase === "win";
-  document.getElementById("result-title").textContent = win ? t.winTitle : t.loseTitle;
-  document.getElementById("result-body").textContent = win ? t.winBody : t.loseBody;
-  document.getElementById("result-hint").textContent = t.retry;
   resultEl.hidden = false;
+  const title = document.getElementById("result-title");
+  const body = document.getElementById("result-body");
+  if (kind === "clear") {
+    title.textContent = t.clearedTitle(stageIndex + 1);
+    body.textContent = t.clearedBody;
+    formEl.hidden = true;
+    document.getElementById("end-wrap").hidden = true;
+    nextBtn.hidden = false;
+    retryBtn.hidden = true;
+    return;
+  }
+  formEl.hidden = false;
+  document.getElementById("end-wrap").hidden = false;
+  nextBtn.hidden = true;
+  retryBtn.hidden = false;
+  if (kind === "win") {
+    title.textContent = t.winTitle;
+    body.textContent = t.winBody;
+  } else {
+    title.textContent = t.loseTitle;
+    body.textContent = t.loseBody(cleared);
+  }
+  const savedName = localStorage.getItem(NAME_KEY) || "";
+  if (!nameEl.value) nameEl.value = [...savedName].slice(0, 10).join("");
 }
-
 function setLang(next) {
   if (!STR[next]) return;
   lang = next;
   localStorage.setItem(LANG_KEY, lang);
   applyStatic();
 }
-
 function ensureAudio() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -458,7 +607,6 @@ function ensureAudio() {
     if (audioCtx.state === "suspended") audioCtx.resume();
   } catch (err) {}
 }
-
 function blip(freq, dur, type) {
   try {
     if (!audioCtx || audioCtx.state !== "running") return;
@@ -476,34 +624,45 @@ function blip(freq, dur, type) {
     osc.stop(t0 + dur + 0.02);
   } catch (err) {}
 }
-
-function begin(now) {
-  sleep = 0;
-  hands = HANDS_MAX;
+function releaseInputs() {
+  holding = false;
+  keyHold = false;
+  pointerDown = false;
+}
+function beginRun(now) {
+  stageIndex = 0;
   saves = 0;
   hits = 0;
-  petMs = 0;
+  cleared = 0;
   paused = false;
   startedAt = now;
   lastNow = now;
-  phase = "calm";
-  statusKey = holding ? "petting" : "idle";
-  nextWarnAt = now + gapMs();
-  phaseUntil = 0;
+  runMs = 0;
+  resultEl.hidden = true;
+  saveBtn.disabled = false;
+  saveMsg.textContent = "";
+  overlay.hidden = true;
+  startStage(now);
+}
+function startStage(now) {
+  sleep = 0;
+  hands = spec().lives;
+  phase = "intro";
+  statusKey = "intro";
+  phaseUntil = now + 900;
+  nextWarnAt = phaseUntil + gapMs();
+  setBanner(T().intro(stageIndex + 1, T().names[stageIndex]), "warn");
   overlay.hidden = true;
   resultEl.hidden = true;
-  setBanner("", "");
   paint(now);
 }
-
 function enterWarn(now) {
   phase = "warn";
   statusKey = "warn";
-  phaseUntil = now + WARN_MS;
+  phaseUntil = now + spec().warn;
   setBanner(T().warn, "warn");
   blip(520, 0.08, "triangle");
 }
-
 function enterDanger(now) {
   phase = "danger";
   statusKey = "pull";
@@ -511,64 +670,75 @@ function enterDanger(now) {
   setBanner(T().pull, "pull");
   blip(880, 0.05, "square");
 }
-
 function enterCalm(now) {
   phase = "calm";
   statusKey = holding ? "petting" : "idle";
   nextWarnAt = now + gapMs();
   setBanner("", "");
 }
-
+function finishRun(now, kind) {
+  releaseInputs();
+  frozenAt = now;
+  runMs = Math.max(1, Math.round(frozenAt - startedAt));
+  phase = kind;
+  statusKey = kind;
+  setBanner("", "");
+  showOutcome(kind);
+  loadBoard();
+}
 function scratch(now) {
   hits += 1;
   hands -= 1;
-  sleep = Math.max(0, sleep - SCRATCH_PENALTY);
+  sleep = Math.max(0, sleep - spec().penalty);
   blip(110, 0.12, "sawtooth");
   setBanner(T().hit, "hit");
   if (hands <= 0) {
-    phase = "lose";
-    statusKey = "lose";
-    frozenAt = now;
-    fillResult();
+    cleared = stageIndex;
+    finishRun(now, "lose");
     return;
   }
   phase = "swat";
   statusKey = "hit";
   phaseUntil = now + 700;
 }
-
-function saved(now) {
+function savedPull(now) {
   saves += 1;
   phase = "safe";
   statusKey = "safe";
-  phaseUntil = now + 380;
+  phaseUntil = now + (stageIndex >= 8 ? 240 : 380);
   setBanner(T().safe, "safe");
   blip(660, 0.06, "sine");
 }
-
-function win(now) {
+function clearStage(now) {
   sleep = SLEEP_MAX;
-  phase = "win";
-  statusKey = "win";
+  releaseInputs();
   frozenAt = now;
-  holding = false;
-  keyHold = false;
+  if (stageIndex >= STAGES.length - 1) {
+    cleared = STAGES.length;
+    finishRun(now, "win");
+    return;
+  }
+  phase = "clear";
+  statusKey = "clear";
   setBanner("", "");
-  fillResult();
+  showOutcome("clear");
 }
-
+function continueStage(now) {
+  const gap = Math.max(0, now - frozenAt);
+  startedAt += gap;
+  lastNow = now;
+  stageIndex += 1;
+  releaseInputs();
+  startStage(now);
+}
 function syncHold() {
   holding = keyHold || pointerDown;
-  if (phase === "calm") statusKey = holding ? "petting" : "idle";
+  if (phase === "calm" || phase === "intro") statusKey = holding ? "petting" : (phase === "intro" ? "intro" : "idle");
 }
-
-let pointerDown = false;
-
 function tick(now) {
   requestAnimationFrame(tick);
-  if (!readyStarted) return;
-  if (paused) return;
-  if (lastNow && now - lastNow > 80 && phase !== "start" && phase !== "win" && phase !== "lose") {
+  if (!readyStarted || paused) return;
+  if (lastNow && now - lastNow > 80 && phase !== "start" && phase !== "win" && phase !== "lose" && phase !== "clear") {
     const extra = now - lastNow - 16;
     phaseUntil += extra;
     nextWarnAt += extra;
@@ -576,27 +746,38 @@ function tick(now) {
   }
   const dt = lastNow ? Math.min(50, now - lastNow) : 16;
   lastNow = now;
-  if (phase === "calm") {
+  if (phase === "intro") {
+    if (holding) sleep += spec().rate * dt / 1000;
+    else sleep = Math.max(0, sleep - spec().decay * dt / 1000);
+    if (sleep >= SLEEP_MAX) {
+      clearStage(now);
+      paint(now);
+      return;
+    }
+    if (now >= phaseUntil) {
+      phase = "calm";
+      statusKey = holding ? "petting" : "idle";
+      setBanner("", "");
+    }
+  } else if (phase === "calm") {
     if (holding) {
-      sleep += SLEEP_PER_SEC * dt / 1000;
-      petMs += dt;
+      sleep += spec().rate * dt / 1000;
       if (sleep >= SLEEP_MAX) {
-        win(now);
+        clearStage(now);
         paint(now);
         return;
       }
-    }
+    } else sleep = Math.max(0, sleep - spec().decay * dt / 1000);
     if (now >= nextWarnAt) enterWarn(now);
   } else if (phase === "warn" && now >= phaseUntil) enterDanger(now);
   else if (phase === "danger" && now >= phaseUntil) {
     if (holding) scratch(now);
-    else saved(now);
+    else savedPull(now);
   } else if ((phase === "safe" || phase === "swat") && now >= phaseUntil) enterCalm(now);
   paint(now);
 }
-
 function togglePause() {
-  if (phase === "start" || phase === "win" || phase === "lose") return;
+  if (phase === "start" || phase === "win" || phase === "lose" || phase === "clear") return;
   if (!paused) {
     paused = true;
     frozenAt = performance.now();
@@ -615,45 +796,163 @@ function togglePause() {
   overlay.hidden = true;
   lastNow = now;
 }
-
 function onPress(now) {
   ensureAudio();
   if (paused) {
     togglePause();
     return;
   }
-  if (phase === "start" || phase === "win" || phase === "lose") {
-    begin(now);
+  if (phase === "start") beginRun(now);
+}
+
+function cleanName(raw) {
+  const trimmed = String(raw || "").replace(/[\u0000-\u001f*]/g, "").trim();
+  return [...trimmed].slice(0, 10).join("");
+}
+function normalize(list) {
+  const rows = [];
+  const seen = new Set();
+  for (const row of list || []) {
+    if (!row || typeof row.name !== "string") continue;
+    const name = cleanName(row.name);
+    const ms = Math.round(Number(row.ms));
+    const stageNo = Math.round(Number(row.stage));
+    const at = typeof row.at === "string" ? row.at : "";
+    if (!name || !Number.isFinite(ms) || ms <= 0 || ms > 3600000) continue;
+    if (!Number.isFinite(stageNo) || stageNo < 0 || stageNo > 10 || !at || !Number.isFinite(Date.parse(at))) continue;
+    const id = name + "|" + stageNo + "|" + ms + "|" + at;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    rows.push({ name, stage: stageNo, ms, at });
+  }
+  rows.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return rows.slice(0, KEEP_N);
+}
+function rowKey(row) { return row.name + "|" + row.stage + "|" + row.ms + "|" + row.at; }
+function readLocal() {
+  try { return normalize(JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]")); }
+  catch (err) { return []; }
+}
+function writeLocal(list) { localStorage.setItem(LOCAL_KEY, JSON.stringify(list)); }
+function formatWhen(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return date.getFullYear() + "-" + p(date.getMonth() + 1) + "-" + p(date.getDate()) + " " + p(date.getHours()) + ":" + p(date.getMinutes());
+}
+function renderInto(el, list) {
+  el.replaceChildren();
+  const top = list.slice(0, TOP_N);
+  if (!top.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = boardNote || T().empty;
+    el.append(li);
+    return;
+  }
+  top.forEach((row, i) => {
+    const li = document.createElement("li");
+    if (rowKey(row) === lastHighlight) li.className = "mine";
+    const rank = document.createElement("span");
+    rank.textContent = String(i + 1);
+    const name = document.createElement("span");
+    name.textContent = row.name;
+    const score = document.createElement("span");
+    score.textContent = T().rankStage(row.stage);
+    const when = document.createElement("span");
+    when.textContent = (row.ms / 1000).toFixed(1) + T().unit + " " + formatWhen(row.at);
+    li.append(rank, name, score, when);
+    el.append(li);
+  });
+}
+function renderBoards() {
+  renderInto(document.getElementById("side-board"), lastList);
+  renderInto(document.getElementById("end-board"), lastList);
+}
+async function fetchRemote() {
+  const resp = await fetch(BOARD_URL, { cache: "no-store" });
+  if (resp.status === 404) return [];
+  if (!resp.ok) throw new Error(String(resp.status));
+  const data = await resp.json();
+  if (!Array.isArray(data)) throw new Error("shape");
+  return normalize(data);
+}
+async function putRemote(list) {
+  const resp = await fetch(BOARD_URL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(list.map((row) => ({ name: row.name, stage: row.stage, ms: row.ms, at: row.at })))
+  });
+  if (!resp.ok) throw new Error(String(resp.status));
+}
+async function loadBoard() {
+  const local = readLocal();
+  try {
+    const remote = await fetchRemote();
+    lastList = normalize(remote.concat(local));
+    boardNote = "";
+    writeLocal(lastList);
+  } catch (err) {
+    lastList = local;
+    boardNote = local.length ? "" : T().boardDown;
+  }
+  renderBoards();
+}
+async function submitScore(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const name = cleanName(nameEl.value);
+  if (!name) {
+    saveMsg.textContent = T().needName;
+    return;
+  }
+  if (runMs <= 0) return;
+  saveMsg.textContent = "";
+  saveBtn.disabled = true;
+  const at = new Date().toISOString();
+  const row = { name, stage: cleared, ms: runMs, at };
+  localStorage.setItem(NAME_KEY, name);
+  lastHighlight = rowKey(row);
+  let base = readLocal();
+  let online = false;
+  try {
+    base = normalize((await fetchRemote()).concat(base));
+    online = true;
+  } catch (err) {
+    online = false;
+  }
+  const next = normalize(base.concat([row]));
+  writeLocal(next);
+  lastList = next;
+  renderBoards();
+  saveMsg.textContent = online ? "" : T().savedLocal;
+  if (!online) return;
+  try {
+    await putRemote(next);
+    saveMsg.textContent = T().saved;
+  } catch (err) {
+    saveMsg.textContent = T().savedLocal;
   }
 }
 
-document.getElementById("result").addEventListener("pointerdown", (event) => {
+formEl.addEventListener("submit", submitScore);
+nextBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (phase !== "clear") return;
+  continueStage(performance.now());
+});
+retryBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
   if (phase !== "win" && phase !== "lose") return;
+  beginRun(performance.now());
+});
+document.getElementById("pause-btn").addEventListener("click", (event) => {
   event.preventDefault();
-  pointerDown = true;
-  onPress(performance.now());
-  syncHold();
+  event.stopPropagation();
+  togglePause();
 });
-
-stage.addEventListener("pointerdown", (event) => {
-  if (event.button !== 0) return;
-  if (event.target.closest("[data-lang]")) return;
-  event.preventDefault();
-  pointerDown = true;
-  try { stage.setPointerCapture(event.pointerId); } catch (err) {}
-  onPress(performance.now());
-  syncHold();
-});
-
-window.addEventListener("pointerup", () => {
-  pointerDown = false;
-  syncHold();
-});
-window.addEventListener("pointercancel", () => {
-  pointerDown = false;
-  syncHold();
-});
-
 document.addEventListener("click", (event) => {
   const btn = event.target.closest("[data-lang]");
   if (!btn) return;
@@ -661,7 +960,18 @@ document.addEventListener("click", (event) => {
   event.stopPropagation();
   setLang(btn.dataset.lang);
 });
-
+stage.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  if (event.target.closest("[data-lang], button, #score-form")) return;
+  if (phase === "clear" || phase === "win" || phase === "lose") return;
+  event.preventDefault();
+  pointerDown = true;
+  try { stage.setPointerCapture(event.pointerId); } catch (err) {}
+  onPress(performance.now());
+  syncHold();
+});
+window.addEventListener("pointerup", () => { pointerDown = false; syncHold(); });
+window.addEventListener("pointercancel", () => { pointerDown = false; syncHold(); });
 window.addEventListener("keydown", (event) => {
   if (event.target.closest("input, textarea, button")) return;
   if (event.repeat) return;
@@ -671,13 +981,16 @@ window.addEventListener("keydown", (event) => {
     return;
   }
   if (event.code === "Space") {
+    if (phase === "clear" || phase === "win" || phase === "lose") {
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     keyHold = true;
     onPress(performance.now());
     syncHold();
   }
 });
-
 window.addEventListener("keyup", (event) => {
   if (event.code !== "Space") return;
   keyHold = false;
@@ -686,8 +999,9 @@ window.addEventListener("keyup", (event) => {
 
 loadLang();
 applyStatic();
+loadBoard();
 
-let needed = Object.keys(ART).length;
+const needed = Object.keys(ART).length;
 for (const name of Object.keys(ART)) {
   const img = new Image();
   frames[name] = img;
@@ -706,7 +1020,6 @@ for (const name of Object.keys(ART)) {
   img.src = ART[name];
   if (img.complete) done();
 }
-
 function boot() {
   const failed = Object.values(frames).filter((img) => !img.naturalWidth).length;
   if (failed) {
